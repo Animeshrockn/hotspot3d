@@ -8,7 +8,7 @@
 
 
 
-float hotspot_stencil_core(float temp_center, float temp_top, float temp_bottom, float temp_west,float temp_east,float temp_north, float temp_south, float power_center, int check, int i, int l, int k ) {
+float hotspot_stencil_core(float temp_center, float temp_top, float temp_bottom, float temp_west,float temp_east,float temp_north, float temp_south, float power_center ) {
     #pragma HLS inline off
     #ifndef _SYNTHESIS_
     // if (check == 0 && i ==0 && l ==0 && k ==0){
@@ -16,10 +16,10 @@ float hotspot_stencil_core(float temp_center, float temp_top, float temp_bottom,
      //printf("temp_center = %f \n ", temp_center);
     //printf("temp_top  = %f  \n ", temp_top);
      //printf("temp_bottom  = %f \n    ", temp_bottom);
-    printf("temp_west = %f    \n ", temp_west);
+    //printf("temp_west = %f    \n ", temp_west);
     //printf("temp_east = %f    \n ", temp_east);
     //printf("temp_north = %f   \n  ", temp_north);
-    // printf("temp_south = %f   \n  ", temp_south);
+     printf("temp_south = %f   \n  ", temp_south);
     // printf("power_center = %f \n    ", power_center);
     
     #endif
@@ -51,15 +51,38 @@ void hotspot3D(float power[TILE_LAYERS * GRID_ROWS * GRID_COLS], float temp[(TIL
 
     float temp_rf_B [PARA_FACTOR][GRID_COLS* 2 / PARA_FACTOR + 1];
     // #pragma HLS array_partition variable=temp_rf_B complete dim=0
+    
+    /*
+        00  01  02  03  04  05  06  07  08  09        0  1  2  3  4  5  6  7  8  9  10   
+        10  11  12  13  14  15  16  17  18  19        00 02 04 06 08 00 02 04 06 08 10  
+        20	21	22	23	24	25	26	27	28	29        01 03 05 07 09 01 03 05 07 09 11
+        30	31	32	33	34	35	36	37	38	39        c = grid_cols/para_factor = 10/2 = 5        
+        40	41	42	43	44	45	46	47	48	49  ->    element in prev row = [k][0]
+        50	51	52	53	54	55	56	57	58	59        element in next row = [k][GRID_COLS* 2 / PARA_FACTOR]         
+        60	61	62	63	64	65	66	67	68	69                            = [k][10]
+        70	71	72	73	74	75	76	77	78	79
+        80	81	82	83	84	85	86	87	88	89
+        90	91	92	93	94	95	96	97	98	99
 
-    for ( i = 0 ; i < 2*GRID_COLS  / PARA_FACTOR + 1; i++) {
+    
+    */
+
+    //Loop for copying first row 
+    for ( i = 0 ; i < GRID_COLS/PARA_FACTOR; i++) {
         #pragma HLS pipeline II=1
         for (ii = 0; ii < PARA_FACTOR; ii++) {
             #pragma HLS unroll
-            temp_rf_T[ii][i] = temp[i*PARA_FACTOR + ii];
-            temp_rf[ii][i] = temp[GRID_COLS*GRID_ROWS + i*PARA_FACTOR + ii];
-            temp_rf_B[ii][i] = temp[2*GRID_COLS*GRID_ROWS + i*PARA_FACTOR + ii];
+            temp_rf[ii][i] = temp[GRID_COLS*GRID_ROWS + i*PARA_FACTOR + ii];            
+        }
+    }
 
+    for (  j=0; i < GRID_COLS * 2 / PARA_FACTOR + 1; i++, j++) {
+        #pragma HLS pipeline II=1
+        for (ii = 0; ii < PARA_FACTOR; ii++) {
+            #pragma HLS unroll
+            temp_rf_T[ii][i] = temp[j*PARA_FACTOR + ii];
+            temp_rf[ii][i] = temp[GRID_COLS*GRID_ROWS + j*PARA_FACTOR + ii];
+            temp_rf_B[ii][i] = temp[2*GRID_COLS*GRID_ROWS + j*PARA_FACTOR + ii];            
         }
     }
 
@@ -68,26 +91,32 @@ void hotspot3D(float power[TILE_LAYERS * GRID_ROWS * GRID_COLS], float temp[(TIL
         #pragma HLS pipeline II=1
         for (k = 0; k < PARA_FACTOR; k++) {
             #pragma HLS unrolls
-            temp_center[k] = temp_rf[k][0];
-      
-            temp_top[k] = (l==0)? temp_rf[k][0]:temp_rf_T[k][0];
+            temp_center[k] = temp_rf[k][GRID_COLS / PARA_FACTOR];
 
-            temp_bottom[k] = (l==BOTTOM)? temp_rf[k][0]:temp_rf_B[k][0];
+            temp_top[k] = (l==0)?temp_center[k]:temp_rf_T[k][GRID_COLS / PARA_FACTOR];
+            temp_bottom[k] =  temp_rf_B[k][GRID_COLS / PARA_FACTOR];
+            temp_north[k] = temp_rf[k][0];
+            temp_south[k] = (i >= GRID_COLS / PARA_FACTOR * (GRID_ROWS - 1) && (i == GRID_COLS / PARA_FACTOR * GRID_ROWS -1)) ? temp_center[k] : temp_rf[k][GRID_COLS / PARA_FACTOR * 2];
 
-            temp_north[k] = (i < GRID_COLS / PARA_FACTOR && which_boundary == TOP) ? temp_center[k] : temp_rf[k][0];
 
             temp_west[k] = ((i % (GRID_COLS / PARA_FACTOR)) == 0 && k == 0) ? temp_center[k] : temp_rf[(k - 1 + PARA_FACTOR) % PARA_FACTOR][GRID_COLS / PARA_FACTOR - (k == 0) ];
-
             temp_east[k] = ((i % (GRID_COLS / PARA_FACTOR)) == (GRID_COLS / PARA_FACTOR - 1) && k == PARA_FACTOR - 1) ? temp_center[k] : temp_rf[(k + 1 + PARA_FACTOR) % PARA_FACTOR][GRID_COLS / PARA_FACTOR + (k == (PARA_FACTOR - 1)) ];
-
-            temp_south[k] = (i >= GRID_COLS / PARA_FACTOR * (TILE_ROWS - 1) && which_boundary == BOTTOM) ? temp_center[k] : temp_rf[k][GRID_COLS / PARA_FACTOR * 2];
-
+            
 
             power_center[k] = power[i * PARA_FACTOR + k];
             //float temp_center, float temp_top, float temp_bottom, float temp_west,float temp_east,float temp_north, float temp_south, float power_center)
-            result[i * PARA_FACTOR + k] = hotspot_stencil_core(temp_center[k], temp_top[k], temp_bottom[k], temp_west[k], temp_east[k], temp_north[k], temp_south[k], power_center[k], i * PARA_FACTOR + k, i , l , k );
+            result[i * PARA_FACTOR + k] = hotspot_stencil_core(temp_center[k], temp_top[k], temp_bottom[k], temp_west[k], temp_east[k], temp_north[k], temp_south[k], power_center[k]);
         }
-
+       if(i<5)
+       {
+       printf("\nTEMP_RF before shift FOR i=%d \n",i);
+        for (k = 0; k < PARA_FACTOR; k++) {
+            for (j = 0; j < GRID_COLS * 2 / PARA_FACTOR + 1; j++) {
+                printf(" %f ",temp_rf[k][j]);
+            }
+             printf("\n");
+        }
+       }
         for (k = 0; k < PARA_FACTOR; k++) {
             #pragma hls unroll
             for (j = 0; j < GRID_COLS * 2 / PARA_FACTOR; j++) {
@@ -95,11 +124,22 @@ void hotspot3D(float power[TILE_LAYERS * GRID_ROWS * GRID_COLS], float temp[(TIL
                 temp_rf_T[k][j] = temp_rf_T[k][j + 1];
                 temp_rf[k][j] = temp_rf[k][j + 1];
                 temp_rf_B[k][j] = temp_rf_B[k][j + 1];
-            }
-            temp_rf_T[k][GRID_COLS * 2 / PARA_FACTOR] = temp[ GRID_COLS * 2 + (i + 1) * PARA_FACTOR + k];
-            temp_rf[k][GRID_COLS * 2 / PARA_FACTOR] = temp[GRID_COLS*GRID_ROWS + GRID_COLS * 2 + (i + 1) * PARA_FACTOR + k];
-            temp_rf_B[k][GRID_COLS * 2 / PARA_FACTOR] = temp[2*GRID_COLS*GRID_ROWS + GRID_COLS * 2 + (i + 1) * PARA_FACTOR + k];
+            }        
+            temp_rf_T[k][GRID_COLS * 2 / PARA_FACTOR] = temp[ GRID_COLS * 2 + (i+1) * PARA_FACTOR + k];
+            temp_rf[k][GRID_COLS * 2 / PARA_FACTOR] = temp[GRID_COLS*GRID_ROWS + GRID_COLS * 2 + (i+1 ) * PARA_FACTOR + k - GRID_COLS];
+            temp_rf_B[k][GRID_COLS * 2 / PARA_FACTOR] = temp[2*GRID_COLS*GRID_ROWS + GRID_COLS * 2 + (i+1 ) * PARA_FACTOR + k];
         }
+
+       if(i<5)
+       {
+        printf("\nTEMP_RF after shift FOR i=%d \n",i);
+        for (k = 0; k < PARA_FACTOR; k++) {
+            for (j = 0; j < GRID_COLS * 2 / PARA_FACTOR + 1; j++) {
+                printf(" %f ",temp_rf[k][j]);
+            }
+             printf("\n");
+        }
+       }
     }
 
 }

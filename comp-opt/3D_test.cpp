@@ -5,6 +5,7 @@
 #include <math.h> 
 #include <sys/time.h>
 #include <string.h>
+#include<iostream>
 #include "3D.h"
 
 int check_data( float *vdata, float *vref ) {
@@ -14,6 +15,7 @@ int check_data( float *vdata, float *vref ) {
     if(vdata[i] != vref[i]){
 
       float tmp;
+      //std::cout<< vdata[i] << " " << vref[i] << "\n";
       if(vdata[i] > vref[i]){
         tmp = vdata[i] - vref[i];
       } else {
@@ -59,7 +61,10 @@ void readinput(float *vect, int grid_rows, int grid_cols, int grid_layers, char 
           {
             if (fgets(str, STR_SIZE, fp) == NULL) fatal("Error reading file\n");
             if (feof(fp))
+            {
+              printf("i = %d, j = %d, k = %d", i, j, k);
               fatal("not enough lines in file");
+            }
             if ((sscanf(str, "%f", &val) != 1))
               fatal("invalid file format");
             vect[i*grid_cols*grid_rows + j*grid_cols + k] = val;
@@ -137,13 +142,13 @@ int main()
 //./3D 512 8 100 ../../data/hotspot3D/power_512x8 ../../data/hotspot3D/temp_512x8 output.out 20
 // 0   1   2 3   4                                5                               6          7
     
-    char *pfile, *tfile, *ofile;// *testFile;
+    char *pfile, *tfile, *ofile1, *ofile2;// *testFile;
 
  
     pfile = "debug_power_10x4";
     tfile = "debug_temp_10x4";
-    ofile = "output.out";
-
+    ofile1= "output.out";
+    ofile2 = "orig.out";
     // pfile = "power_512x8";
     // tfile = "temp_512x8";
     // ofile = "output.out";
@@ -180,7 +185,8 @@ int main()
     printf("Time for parallelized run : %.3f (s)\n",time_FPGA);
     printf("Accuracy: %e\n",acc);
     printf("Speedup = %.3f \n",speedup);
-    writeoutput(tempOut,GRID_ROWS, GRID_COLS, GRID_LAYERS, ofile);
+    writeoutput(tempOut,GRID_ROWS, GRID_COLS, GRID_LAYERS, ofile1);
+    writeoutput(answer,GRID_ROWS, GRID_COLS, GRID_LAYERS, ofile2);
     
     if(check_data( tempOut,answer ))
        printf("\nTEST PASSED\n");
