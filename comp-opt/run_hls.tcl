@@ -8,8 +8,8 @@ set_top workload
 # add design files
 add_files 3D.cpp
 # add the testbench files
-# add_files -tb "3D_test.cpp power_512x8 temp_512x8"
-add_files -tb "3D_test.cpp debug_power_10x4 debug_temp_10x4"
+add_files -tb "3D_test.cpp power_512x8 temp_512x8"
+#add_files -tb "3D_test.cpp debug_power_10x4 debug_temp_10x4"
 
 # open HLS solution solution1
 open_solution "solution1"

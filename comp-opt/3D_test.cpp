@@ -15,7 +15,7 @@ int check_data( float *vdata, float *vref ) {
     if(vdata[i] != vref[i]){
 
       float tmp;
-      //std::cout<< vdata[i] << " " << vref[i] << "\n";
+      //std::cout<< vdata[i] << "," << vref[i] << "\n";
       if(vdata[i] > vref[i]){
         tmp = vdata[i] - vref[i];
       } else {
@@ -115,7 +115,7 @@ void computeTempCPU(float *pIn, float* tIn, float *tOut)
                     t = (z == GRID_LAYERS - 1) ? c : c + GRID_COLS * GRID_ROWS; 
 
 
-                    tOut[c] = tIn[c]*cc + tIn[n]*cn + tIn[s]*cs + tIn[e]*ce + tIn[w]*cw + tIn[t]*ct + tIn[b]*cb + (dt/Cap) * pIn[c] + ct*AMB_TEMP;
+                    tOut[c] = tIn[c]*cc + tIn[n]*cn + tIn[s]*cs + tIn[e]*ce + tIn[w]*cw + tIn[t]*ct + tIn[b]*cb + (stepDivCap) * pIn[c] + ct*AMB_TEMP;
                 }
         float *temp = tIn;
         tIn = tOut;
@@ -143,14 +143,10 @@ int main()
 // 0   1   2 3   4                                5                               6          7
     
     char *pfile, *tfile, *ofile1, *ofile2;// *testFile;
-
- 
-    pfile = "debug_power_10x4";
-    tfile = "debug_temp_10x4";
     ofile1= "output.out";
     ofile2 = "orig.out";
-    // pfile = "power_512x8";
-    // tfile = "temp_512x8";
+    pfile = "power_512x8";
+    tfile = "temp_512x8";
     // ofile = "output.out";
     float *powerIn, *tempOut, *tempIn, *tempCopy;
 
