@@ -119,23 +119,26 @@ void store(float *tempOut, float *result_inner, int l)
 #pragma HLS INTERFACE m_axi port = tempOut offset = slave bundle = gmem
 
 #pragma HLS INTERFACE s_axilite port = tempIn bundle = control
-#pragma HLS INTERFACE s_asizexilite port = powerIn bundle = control
+#pragma HLS INTERFACE s_axilite port = powerIn bundle = control
 #pragma HLS INTERFACE s_axilite port = tempOut bundle = control
 
 #pragma HLS INTERFACE s_axilite port = return bundle = control
-
+    
     float result_inner[TILE_LAYERS * GRID_ROWS * GRID_COLS];
+    #pragma HLS bind_storage_variables=result_inner type=RAM_2P impl=BRAM
     float temp_inner[(TILE_LAYERS + 2) * (GRID_ROWS)*GRID_COLS];
+    #pragma HLS bind_storage_variables=temp_inner type=RAM_2P impl=BRAM
     float power_inner[TILE_LAYERS* GRID_ROWS * GRID_COLS];
+    #pragma HLS bind_storage_variables=power_inner type=RAM_2P impl=BRAM
     int i;
-
+    // #pragma HLS array_partition variable=result_inner complete dim=0
+    // #pragma HLS array_partition variable=temp_inner complete dim=0
+    // #pragma HLS array_partition variable=power_inner complete dim=0
     ITER_LOOP:for ( i = 0; i < ITERATIONS ; i++)
         {
-        #pragma HLS pipeline II=1
         int l;
         TILE_LOOP:for (l = 0; l < GRID_LAYERS; l+= TILE_LAYERS)
         {
-             #pragma HLS unroll
             load( temp_inner,power_inner, tempIn, powerIn,  l);
 
             hotspot3D(power_inner, temp_inner, result_inner, l);
